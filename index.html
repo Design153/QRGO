@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRGo - Instant QR Code Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+  <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; margin: 0; }
+    .dropdown-content { display: none; position: absolute; background-color: white; min-width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 10; border-radius: 0.5rem; padding: 1rem; opacity: 0; transform: translateY(-10px); transition: opacity 0.3s ease, transform 0.3s ease; }
+    .dropdown.active .dropdown-content { display: block; opacity: 1; transform: translateY(0); }
+    .qr-container { transition: transform 0.3s ease; }
+    .qr-container:hover { transform: scale(1.05); }
+    .popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 100; animation: popupFadeIn 0.3s ease; }
+    .popup.active { display: block; }
+    .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
+    .overlay.active { display: block; }
+    .nav-button { padding: 0.5rem 1.5rem; border-radius: 9999px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; font-weight: 600; transition: all 0.3s ease; }
+    .nav-button:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); }
+    .footer { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); color: #1f2937; padding: 2rem 1rem; border-top: 4px solid #6366f1; position: relative; width: 100%; bottom: 0; }
+    .footer a { transition: color 0.3s ease, transform 0.3s ease; }
+    .footer a:hover { color: #6366f1; transform: scale(1.05); }
+    .footer-button { display: inline-block; padding: 0.5rem 1.5rem; margin: 0.5rem; border-radius: 9999px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; font-weight: 600; transition: all 0.3s ease; text-decoration: none; }
+    .footer-button:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); }
+    .title-3d { font-family: 'Poppins', sans-serif; font-size: 3rem; font-weight: 700; color: #1f2937; text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2); animation: float 3s ease-in-out infinite; letter-spacing: 1px; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes popupFadeIn { from { opacity: 0; transform: translate(-50%, -60%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+    .use-cases { position: fixed; left: -230px; top: 50%; transform: translateY(-50%); background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 1rem 3rem 1rem 1rem; border-radius: 0 1rem 1rem 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transition: left 0.5s ease; z-index: 20; cursor: pointer; width: 250px; height: 60px; }
+    .use-cases.active { left: 0; }
+    .use-cases-dropdown { display: none; position: fixed; left: 250px; top: 50%; transform: translateY(-50%); background: white; width: 350px; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 16px rgba(0,0,0,0.2); border-radius: 0.5rem; padding: 1rem; opacity: 0; transition: opacity 0.3s ease; z-index: 19; }
+    .use-cases.active .use-cases-dropdown { display: block; opacity: 1; }
+    .use-case-item { transition: transform 0.3s ease; }
+    .use-case-item:hover { transform: translateX(5px); }
+    .use-cases-title { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: white; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); transform: rotate(-90deg); position: absolute; left: 30px; top: 50%; transform-origin: left center; white-space: nowrap; animation: float3d 2s ease-in-out infinite; }
+    @keyframes float3d { 0%, 100% { transform: rotate(-90deg) translateZ(0); } 50% { transform: rotate(-90deg) translateZ(10px); } }
+    .payment-popup { text-align: left; }
+    .payment-option { margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 0.5rem; transition: transform 0.3s ease; }
+    .payment-option:hover { transform: scale(1.02); }
+    .use-case-preview { display: none; position: fixed; left: calc(100vw - 380px); top: 50%; transform: translateY(-50%); width: 360px; height: 640px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border: 8px solid #1e293b; border-radius: 36px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.1); padding: 0; z-index: 20; overflow: hidden; animation: slideInFromRight 0.5s ease-out forwards; }
+    .use-case-preview.active { display: block; }
+    @keyframes slideInFromRight { from { opacity: 0; transform: translateY(-50%) translateX(100px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+    .preview-header { background: #0f172a; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+    .preview-header .status-bar { font-size: 12px; display: flex; align-items: center; gap: 5px; }
+    .preview-header .status-bar .battery { width: 20px; height: 10px; border: 1px solid white; position: relative; }
+    .preview-header .status-bar .battery::after { content: ''; position: absolute; top: 1px; left: 1px; width: 70%; height: 6px; background: #22c55e; }
+    .preview-content { background: #ffffff; height: calc(100% - 60px); padding: 15px; overflow-y: auto; border-bottom-left-radius: 28px; border-bottom-right-radius: 28px; animation: fadeInContent 0.6s ease forwards; }
+    @keyframes fadeInContent { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .preview-content h3 { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; margin-bottom: 10px; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1); }
+    .preview-content p { font-size: 0.9rem; color: #4b5563; margin-bottom: 15px; line-height: 1.4; }
+    .preview-content label { font-weight: 600; color: #1e40af; margin-bottom: 5px; display: block; }
+    .preview-content input, .preview-content textarea, .preview-content select { width: 100%; padding: 10px; margin-bottom: 15px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 0.9rem; transition: border-color 0.3s ease, transform 0.3s ease; }
+    .preview-content input:focus, .preview-content textarea:focus, .preview-content select:focus { border-color: #1e3a8a; outline: none; transform: scale(1.02); }
+    .preview-content .buttons { display: flex; gap: 10px; margin-top: 20px; }
+    .preview-content button { flex: 1; padding: 12px; border-radius: 25px; font-weight: 600; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .preview-content button:first-child { background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; }
+    .preview-content button:last-child { background: #e5e7eb; color: #1f2937; }
+    .preview-content button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+  <header class="bg-white shadow-md sticky top-0 z-50">
+    <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-3xl font-bold text-indigo-600 animate__animated animate__fadeInDown">QRGo</h1>
+      <div class="space-x-4">
+        <div class="relative inline-block dropdown">
+          <button onclick="toggleDropdown('features')" class="nav-button">Features</button>
+          <div id="features-dropdown" class="dropdown-content mt-2 right-0">
+            <h2 class="text-xl font-bold text-gray-800 mb-2">Why Choose QRGo?</h2>
+            <p class="text-sm text-gray-600 mb-4">Generate and customize QR codes instantly – no signup required!</p>
+            <div class="space-y-4">
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold mb-1">Instant QR Codes</h3>
+                <p class="text-gray-600 text-sm">Generate in seconds.</p>
+                <button onclick="showPopup('instant')" class="mt-2 bg-indigo-500 text-white px-3 py-1 rounded-full hover:bg-indigo-600 transition-transform hover:scale-105 text-sm">Learn More</button>
+              </div>
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold mb-1">Customizable</h3>
+                <p class="text-gray-600 text-sm">Colors, logos, styles, shapes.</p>
+                <button onclick="showPopup('customizable')" class="mt-2 bg-indigo-500 text-white px-3 py-1 rounded-full hover:bg-indigo-600 transition-transform hover:scale-105 text-sm">Learn More</button>
+              </div>
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold mb-1">High-Quality</h3>
+                <p class="text-gray-600 text-sm">PNG, SVG, PDF downloads.</p>
+                <button onclick="showPopup('high-quality')" class="mt-2 bg-indigo-500 text-white px-3 py-1 rounded-full hover:bg-indigo-600 transition-transform hover:scale-105 text-sm">Learn More</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="relative inline-block dropdown">
+          <button onclick="toggleDropdown('pricing')" class="nav-button">Pricing</button>
+          <div id="pricing-dropdown" class="dropdown-content mt-2 right-0">
+            <h2 class="text-xl font-bold text-gray-800 mb-2">Simple & Affordable Pricing</h2>
+            <p class="text-sm text-gray-600 mb-4">Choose the plan that fits your needs. No subscriptions, just one-time payments!</p>
+            <div class="space-y-4">
+              <div class="bg-gray-100 p-4 rounded-lg border-2 border-green-500">
+                <h3 class="text-lg font-bold mb-1">Free Plan</h3>
+                <p class="text-gray-600 text-sm mb-2">Basic QR Codes</p>
+                <ul class="text-left text-gray-700 text-sm">
+                  <li>✔️ Standard black-and-white QR codes</li>
+                  <li>✔️ Download as PNG</li>
+                  <li>❌ No customization</li>
+                </ul>
+                <button class="mt-2 bg-green-500 text-white px-4 py-2 rounded-full w-full hover:bg-green-600 transition-transform hover:scale-105 text-sm">Get Started</button>
+              </div>
+              <div class="bg-gray-100 p-4 rounded-lg border-2 border-indigo-500">
+                <h3 class="text-lg font-bold mb-1">Premium QR Code</h3>
+                <p class="text-gray-600 text-sm mb-2">$2.99 (One-time)</p>
+                <ul class="text-left text-gray-700 text-sm">
+                  <li>✔️ Custom colors, shapes & logos</li>
+                  <li>✔️ High-res SVG/PDF</li>
+                  <li>✔️ No watermarks</li>
+                </ul>
+                <button class="mt-2 bg-indigo-500 text-white px-4 py-2 rounded-full w-full hover:bg-indigo-600 transition-transform hover:scale-105 text-sm">Buy Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="relative inline-block dropdown">
+          <button onclick="toggleDropdown('contact')" class="nav-button">Contact</button>
+          <div id="contact-dropdown" class="dropdown-content mt-2 right-0">
+            <h2 class="text-xl font-bold text-gray-800 mb-2">Get in Touch</h2>
+            <p class="text-sm text-gray-600 mb-4">Need help? Have a question? We’re here for you.</p>
+            <div class="space-y-2 text-left text-sm text-gray-700">
+              <p>📩 Email: <a href="mailto:support@qrgo.com" class="text-indigo-600">support@qrgo.com</a></p>
+              <p>📞 WhatsApp: <a href="#" class="text-indigo-600">+1-555-123-4567</a></p>
+              <p>📜 <a href="#" class="text-indigo-600">FAQ</a></p>
+            </div>
+            <button onclick="showPopup('contact')" class="mt-4 bg-indigo-500 text-white px-4 py-2 rounded-full w-full hover:bg-indigo-600 transition-transform hover:scale-105 text-sm">Contact Form</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-grow container mx-auto px-4 py-8 text-center">
+    <h2 class="title-3d">Instant QR Code Generator</h2>
+    <p class="text-lg text-gray-600 mb-8 animate__animated animate__fadeIn">Create and customize your QR code in seconds.</p>
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg animate__animated animate__zoomIn">
+      <div class="flex items-center space-x-4 mb-4">
+        <input type="text" id="qr-input" placeholder="Enter URL, text, WiFi, etc." class="flex-grow p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <label class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-transform hover:scale-105 cursor-pointer">
+          Upload File
+          <input type="file" id="qr-file-upload" class="hidden" onchange="handleFileUpload()" accept="image/*,.pdf,.txt" />
+        </label>
+      </div>
+      <button onclick="generateQR()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-transform hover:scale-105">Generate QR Code</button>
+   <button onclick="showScanOptions()" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-transform hover:scale-105 mt-4">Scan QR Code</button>
+      <div id="qr-preview" class="mt-8"></div>
+      <div id="customization-panel" class="mt-6 p-4 bg-gray-100 rounded-lg hidden">
+        <h3 class="text-lg font-semibold mb-2">Customize Your QR Code</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-gray-700">QR Color</label><input type="color" id="qr-color" value="#000000" onchange="updateQR()" class="w-full h-10 rounded-lg" /></div>
+          <div><label class="block text-sm font-medium text-gray-700">Background Color</label><input type="color" id="qr-bg-color" value="#ffffff" onchange="updateQR()" class="w-full h-10 rounded-lg" /></div>
+          <div><label class="block text-sm font-medium text-gray-700">Size (px)</label><input type="number" id="qr-size" value="200" min="100" max="500" onchange="updateQR()" class="w-full p-2 border rounded-lg" /></div>
+          <div><label class="block text-sm font-medium text-gray-700">Shape</label><select id="qr-shape" onchange="updateQR()" class="w-full p-2 border rounded-lg">
+            <option value="square">Square</option><option value="rounded">Rounded</option><option value="circle">Circle</option><option value="diamond">Diamond</option><option value="hexagon">Hexagon</option><option value="star">Star</option><option value="heart">Heart</option><option value="triangle">Triangle</option><option value="octagon">Octagon</option><option value="pixelated">Pixelated</option>
+          </select></div>
+          <div><label class="block text-sm font-medium text-gray-700">Error Correction</label><select id="qr-error-correction" onchange="updateQR()" class="w-full p-2 border rounded-lg">
+            <option value="L">Low (L)</option><option value="M">Medium (M)</option><option value="Q">Quartile (Q)</option><option value="H">High (H)</option>
+          </select></div>
+          <div><label class="block text-sm font-medium text-gray-700">Quiet Zone (px)</label><input type="number" id="qr-quiet-zone" value="4" min="0" max="20" onchange="updateQR()" class="w-full p-2 border rounded-lg" /></div>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button onclick="fetchGoogleQR()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-transform hover:scale-105">Google QR</button>
+          <button onclick="fetchQRCodeMonkey()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-transform hover:scale-105">QR Monkey</button>
+        </div>
+      </div>
+      <div id="download-buttons" class="mt-4 grid grid-cols-2 gap-4 hidden">
+        <button onclick="showPaymentPopup('png')" class="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition-transform hover:scale-105">PNG</button>
+        <button onclick="showPaymentPopup('svg')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">SVG</button>
+        <button onclick="showPaymentPopup('pdf')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">PDF</button>
+        <button onclick="showPaymentPopup('jpg')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">JPG</button>
+        <button onclick="showPaymentPopup('eps')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">EPS</button>
+        <button onclick="showPaymentPopup('gif')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">GIF</button>
+        <button onclick="showPaymentPopup('tiff')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">TIFF</button>
+        <button onclick="showPaymentPopup('bmp')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">BMP</button>
+        <button onclick="showPaymentPopup('webp')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">WEBP</button>
+        <button onclick="showPaymentPopup('dxf')" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">DXF</button>
+        <button onclick="resetForm()" class="col-span-2 bg-gray-300 text-gray-800 px-4 py-2 rounded-full hover:bg-gray-400 transition-transform hover:scale-105">Back</button>
+      </div>
+    </div>
+  </main>
+<div id="scan-popup" class="popup">
+  <h3 class="text-xl font-bold mb-2">Scan QR Code</h3>
+  <p class="text-gray-600 mb-4">Choose how to scan your QR code:</p>
+  <div class="flex flex-col space-y-4">
+    <label class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-transform hover:scale-105 cursor-pointer">
+      Upload QR Image
+      <input type="file" id="qr-scan-upload" class="hidden" onchange="scanQRFromImage()" accept="image/*" />
+    </label>
+    <button onclick="startWebcamScan()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-transform hover:scale-105">Use Webcam</button>
+  </div>
+  <button onclick="hideScanPopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button>
+</div>
+
+<div id="webcam-popup" class="popup" style="width: 400px;">
+  <h3 class="text-xl font-bold mb-2">Webcam QR Scanner</h3>
+  <video id="webcam-video" autoplay playsinline style="max-width: 100%; border-radius: 8px;"></video>
+  <canvas id="webcam-canvas" style="display: none;"></canvas>
+  <button onclick="stopWebcamScan()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Stop Scanning</button>
+</div>
+
+  <footer class="footer">
+    <div class="container mx-auto px-4 text-center">
+      <h3 class="text-2xl font-bold mb-4">QRGo</h3>
+      <p class="text-gray-600 mb-4">Your one-stop solution for QR code creation.</p>
+      <div class="flex justify-center space-x-6">
+        <a href="#" class="footer-button">Terms</a>
+        <a href="#" class="footer-button">Privacy</a>
+        <a href="#" class="footer-button">Support</a>
+      </div>
+      <p class="text-gray-500 mt-4 text-sm">© 2025 QRGo. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <div class="use-cases dropdown" onclick="toggleUseCases()">
+    <h3 class="use-cases-title">100+ Use Cases Supported</h3>
+    <div id="use-cases-dropdown" class="use-cases-dropdown">
+      <h4 class="text-lg font-bold text-gray-800 mb-2">Use Cases</h4>
+      <div class="space-y-4">
+        <div><h5 class="text-md font-semibold text-indigo-600">📌 Business & Marketing</h5><ul class="text-sm text-gray-700 space-y-1">
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Product packaging', 'URL', 'https://example.com/product')">1️⃣ Product packaging</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Business cards', 'vCard', 'BEGIN:VCARD\\nVERSION:3.0\\nN:Doe;John\\nORG:Example Inc.\\nTEL:+1234567890\\nEMAIL:john@example.com\\nEND:VCARD')">2️⃣ Business cards</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Flyers & posters', 'URL', 'https://example.com/event')">3️⃣ Flyers & posters</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Digital menus for restaurants', 'URL', 'https://example.com/menu')">4️⃣ Digital menus for restaurants</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Storefront signs', 'URL', 'https://example.com/store')">5️⃣ Storefront signs</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Brochures & catalogs', 'URL', 'https://example.com/catalog.pdf')">6️⃣ Brochures & catalogs</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Event promotions', 'URL', 'https://example.com/event-details')">7️⃣ Event promotions</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Trade shows & conferences', 'URL', 'https://example.com/conference')">8️⃣ Trade shows & conferences</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Billboards & outdoor ads', 'URL', 'https://example.com/ad')">9️⃣ Billboards & outdoor ads</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Customer feedback forms', 'URL', 'https://example.com/feedback')">🔟 Customer feedback forms</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Loyalty programs', 'URL', 'https://example.com/loyalty')"> Loyalty programs</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Online payments', 'URL', 'https://example.com/pay')">1️⃣ Online payments</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Coupons & discounts', 'URL', 'https://example.com/coupon')">1️⃣ Coupons & discounts</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Membership sign-ups', 'URL', 'https://example.com/signup')">1️⃣ Membership sign-ups</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('E-commerce product links', 'URL', 'https://example.com/product123')">1️⃣ E-commerce product links</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Social media profiles', 'URL', 'https://twitter.com/example')">1️⃣ Social media profiles</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('App downloads', 'URL', 'https://example.com/app')">1️⃣ App downloads</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Real estate listings', 'URL', 'https://example.com/property')">1️⃣ Real estate listings</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Business location maps', 'Geo', 'geo:37.7749,-122.4194')">1️⃣ Business location maps</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Affiliate marketing links', 'URL', 'https://example.com/affiliate')">2️⃣ Affiliate marketing links</a></li>
+        </ul></div>
+        <div><h5 class="text-md font-semibold text-indigo-600">📌 Education & Learning</h5><ul class="text-sm text-gray-700 space-y-1">
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Class schedules', 'URL', 'https://example.com/schedule')">2️⃣ Class schedules</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Online assignments', 'URL', 'https://example.com/assignment')">2️⃣ Online assignments</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Course materials', 'URL', 'https://example.com/materials')">2️⃣ Course materials</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('E-learning platforms', 'URL', 'https://example.com/elearning')">2️⃣ E-learning platforms</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Student ID cards', 'Text', 'StudentID:123456')">2️⃣ Student ID cards</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Virtual campus tours', 'URL', 'https://example.com/tour')">2️⃣ Virtual campus tours</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Teacher contact details', 'Tel', 'tel:+1234567890')">2️⃣ Teacher contact details</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Feedback surveys', 'URL', 'https://example.com/survey')">2️⃣ Feedback surveys</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Attendance tracking', 'URL', 'https://example.com/attendance')">2️⃣ Attendance tracking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Research paper references', 'URL', 'https://example.com/paper.pdf')">3️⃣ Research paper references</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('University applications', 'URL', 'https://example.com/apply')">3️⃣ University applications</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Exam results', 'URL', 'https://example.com/results')">3️⃣ Exam results</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Library catalogs', 'URL', 'https://example.com/library')">3️⃣ Library catalogs</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Study group links', 'URL', 'https://example.com/studygroup')">3️⃣ Study group links</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Digital whiteboards', 'URL', 'https://example.com/whiteboard')">3️⃣ Digital whiteboards</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Language learning apps', 'URL', 'https://example.com/languageapp')">3️⃣ Language learning apps</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Educational videos', 'URL', 'https://youtube.com/watch?v=example')">3️⃣ Educational videos</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Certificates & diplomas', 'URL', 'https://example.com/certificate')">3️⃣ Certificates & diplomas</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Campus event promotions', 'URL', 'https://example.com/campus-event')">3️⃣ Campus event promotions</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Fundraising & donations', 'URL', 'https://example.com/donate')">4️⃣ Fundraising & donations</a></li>
+        </ul></div>
+        <div><h5 class="text-md font-semibold text-indigo-600">📌 Healthcare & Medical</h5><ul class="text-sm text-gray-700 space-y-1">
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Hospital patient records', 'URL', 'https://example.com/patient123')">4️⃣ Hospital patient records</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Prescription details', 'Text', 'Rx:MedicationName,Dose')">4️⃣ Prescription details</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Doctor appointment booking', 'URL', 'https://example.com/book')">4️⃣ Doctor appointment booking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Health insurance cards', 'Text', 'InsuranceID:123456')">4️⃣ Health insurance cards</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Vaccination certificates', 'URL', 'https://example.com/vaccine-cert')">4️⃣ Vaccination certificates</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Emergency contacts', 'Tel', 'tel:+1234567890')">4️⃣ Emergency contacts</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Medication instructions', 'URL', 'https://example.com/med-instructions')">4️⃣ Medication instructions</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Virtual doctor consultations', 'URL', 'https://example.com/consult')">4️⃣ Virtual doctor consultations</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Healthcare provider reviews', 'URL', 'https://example.com/reviews')">4️⃣ Healthcare provider reviews</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Medical research links', 'URL', 'https://example.com/research')">5️⃣ Medical research links</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Fitness & wellness tracking', 'URL', 'https://example.com/fitness')">5️⃣ Fitness & wellness tracking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Mental health resources', 'URL', 'https://example.com/mentalhealth')">5️⃣ Mental health resources</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Blood donation camp details', 'URL', 'https://example.com/bloodcamp')">5️⃣ Blood donation camp details</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Nutrition & diet guides', 'URL', 'https://example.com/nutrition')">5️⃣ Nutrition & diet guides</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('First-aid instructions', 'URL', 'https://example.com/firstaid')">5️⃣ First-aid instructions</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Medical wristbands', 'Text', 'WristbandID:123456')">5️⃣ Medical wristbands</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Health insurance claims', 'URL', 'https://example.com/claim')">5️⃣ Health insurance claims</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('COVID-19 test results', 'URL', 'https://example.com/testresult')">5️⃣ COVID-19 test results</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Hospital navigation', 'Geo', 'geo:37.7749,-122.4194')">5️⃣ Hospital navigation</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Online pharmacy orders', 'URL', 'https://example.com/pharmacy')">6️⃣ Online pharmacy orders</a></li>
+        </ul></div>
+        <div><h5 class="text-md font-semibold text-indigo-600">📌 Transportation & Travel</h5><ul class="text-sm text-gray-700 space-y-1">
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Digital boarding passes', 'Text', 'BoardingPass:Flight123')">6️⃣ Digital boarding passes</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Train & bus tickets', 'Text', 'Ticket:Bus123')">6️⃣ Train & bus tickets</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Ride-sharing services', 'URL', 'https://example.com/rideshare')">6️⃣ Ride-sharing services</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Hotel check-in details', 'URL', 'https://example.com/checkin')">6️⃣ Hotel check-in details</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Luggage tracking tags', 'Text', 'LuggageID:123456')">6️⃣ Luggage tracking tags</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Car rental services', 'URL', 'https://example.com/rental')">6️⃣ Car rental services</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Tourist guides', 'URL', 'https://example.com/tourguide')">6️⃣ Tourist guides</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Maps & navigation', 'Geo', 'geo:37.7749,-122.4194')">6️⃣ Maps & navigation</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Public transport schedules', 'URL', 'https://example.com/schedule')">6️⃣ Public transport schedules</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Airport lounge access', 'URL', 'https://example.com/lounge')">7️⃣ Airport lounge access</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Emergency contacts for travelers', 'Tel', 'tel:+1234567890')">7️⃣ Emergency contacts for travelers</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Cruise ship itineraries', 'URL', 'https://example.com/itinerary')">7️⃣ Cruise ship itineraries</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Museum & art gallery guides', 'URL', 'https://example.com/museum')">7️⃣ Museum & art gallery guides</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Tourist attraction audio guides', 'URL', 'https://example.com/audioguide')">7️⃣ Tourist attraction audio guides</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Car parking tickets', 'Text', 'ParkingID:123456')">7️⃣ Car parking tickets</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Highway toll payments', 'URL', 'https://example.com/toll')">7️⃣ Highway toll payments</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Travel insurance details', 'URL', 'https://example.com/insurance')">7️⃣ Travel insurance details</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Visa applications', 'URL', 'https://example.com/visa')">7️⃣ Visa applications</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Baggage claim tracking', 'Text', 'BaggageID:123456')">7️⃣ Baggage claim tracking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Digital postcards', 'URL', 'https://example.com/postcard')">8️⃣ Digital postcards</a></li>
+        </ul></div>
+        <div><h5 class="text-md font-semibold text-indigo-600">📌 Smart Homes & IoT</h5><ul class="text-sm text-gray-700 space-y-1">
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('WiFi network access', 'WiFi', 'WIFI:S:MyNetwork;P:password123;T:WPA2;;')">8️⃣ WiFi network access</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Smart home device setup', 'URL', 'https://example.com/setup')">8️⃣ Smart home device setup</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Smart locks', 'Text', 'LockID:123456')">8️⃣ Smart locks</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Home security system controls', 'URL', 'https://example.com/security')">8️⃣ Home security system controls</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('IoT product manuals', 'URL', 'https://example.com/manual')">8️⃣ IoT product manuals</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Smart thermostats', 'URL', 'https://example.com/thermostat')">8️⃣ Smart thermostats</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Energy consumption tracking', 'URL', 'https://example.com/energy')">8️⃣ Energy consumption tracking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Grocery shopping lists', 'URL', 'https://example.com/grocery')">8️⃣ Grocery shopping lists</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Voice assistant integrations', 'URL', 'https://example.com/voice')">8️⃣ Voice assistant integrations</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Smart fridge inventory', 'URL', 'https://example.com/fridge')">9️⃣ Smart fridge inventory</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Airbnb check-in keys', 'URL', 'https://example.com/airbnb')">9️⃣ Airbnb check-in keys</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Home maintenance schedules', 'URL', 'https://example.com/maintenance')">9️⃣ Home maintenance schedules</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('QR-based access control', 'Text', 'AccessID:123456')">9️⃣ QR-based access control</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Troubleshooting home appliances', 'URL', 'https://example.com/troubleshoot')">9️⃣ Troubleshooting home appliances</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Emergency service QR codes', 'Tel', 'tel:+1234567890')">9️⃣ Emergency service QR codes</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Virtual real estate tours', 'URL', 'https://example.com/tour')">9️⃣ Virtual real estate tours</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Streaming subscription management', 'URL', 'https://example.com/streaming')">9️⃣ Streaming subscription management</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Car dashboard information', 'URL', 'https://example.com/dashboard')">9️⃣ Car dashboard information</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Smart mirror workout tracking', 'URL', 'https://example.com/workout')">9️⃣ Smart mirror workout tracking</a></li>
+          <li class="use-case-item"><a href="#" onclick="showUseCasePreview('Pet identification tags', 'Text', 'PetID:123456')">🔟 Pet identification tags</a></li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="use-case-preview" class="use-case-preview">
+    <div class="preview-header">
+      <div class="status-bar">
+        <span id="clock"></span>
+        <span>📶</span>
+        <span>Wi-Fi</span>
+        <div class="battery"></div>
+      </div>
+    </div>
+    <div id="preview-content" class="preview-content"></div>
+  </div>
+ <div id="scan-popup" class="popup">
+  <h3 class="text-xl font-bold mb-2">Scan QR Code</h3>
+  <p class="text-gray-600 mb-4">Choose how to scan your QR code:</p>
+  <div class="flex flex-col space-y-4">
+    <label class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-transform hover:scale-105 cursor-pointer">
+      Upload QR Image
+      <input type="file" id="qr-scan-upload" class="hidden" onchange="scanQRFromImage()" accept="image/*" />
+    </label>
+    <button onclick="startWebcamScan()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-transform hover:scale-105">Use Webcam</button>
+  </div>
+  <button onclick="hideScanPopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button>
+</div>
+<div id="webcam-popup" class="popup" style="width: 400px;">
+  <h3 class="text-xl font-bold mb-2">Webcam QR Scanner</h3>
+  <video id="webcam-video" autoplay playsinline style="max-width: 100%; border-radius: 8px;"></video>
+  <canvas id="webcam-canvas" style="display: none;"></canvas>
+  <button onclick="stopWebcamScan()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Stop Scanning</button>
+</div>
+
+  <div id="overlay" class="overlay" onclick="hidePopup()"></div>
+  <div id="popup-instant" class="popup"><h3 class="text-xl font-bold mb-2">Instant QR Codes</h3><p class="text-gray-600">Enter text, URL, or contact info and get a QR code in seconds.</p><button onclick="hidePopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button></div>
+  <div id="popup-customizable" class="popup"><h3 class="text-xl font-bold mb-2">Customizable QR Codes</h3><p class="text-gray-600">Change colors, add logos, and adjust design styles and shapes to match your brand.</p><button onclick="hidePopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button></div>
+  <div id="popup-high-quality" class="popup"><h3 class="text-xl font-bold mb-2">High-Quality Downloads</h3><p class="text-gray-600">Save your QR codes in PNG (free) or SVG/PDF (premium) formats.</p><button onclick="hidePopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button></div>
+  <div id="popup-contact" class="popup"><h3 class="text-xl font-bold mb-2">Contact Us</h3><form class="text-left"><input type="text" placeholder="Name" class="w-full p-2 mb-2 border rounded" /><input type="email" placeholder="Email" class="w-full p-2 mb-2 border rounded" /><textarea placeholder="Message" class="w-full p-2 mb-2 border rounded" rows="4"></textarea><button type="button" class="bg-indigo-500 text-white px-4 py-2 rounded-full hover:bg-indigo-600">Send</button></form><button onclick="hidePopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Close</button></div>
+  <div id="payment-popup" class="popup payment-popup"><h3 class="text-xl font-bold mb-2">Complete Payment to Download</h3><p class="text-gray-600 mb-4">Please make a payment of $2.99 to download your QR code.</p><div class="payment-option"><h4 class="font-semibold">Mpesa</h4><p class="text-sm text-gray-600">Send $2.99 to: <strong>+254 746856808</strong></p><p class="text-sm text-gray-600">After payment, enter the transaction ID below:</p><input type="text" id="mpesa-id" placeholder="Mpesa Transaction ID" class="w-full p-2 mt-2 border rounded" /></div><div class="payment-option"><h4 class="font-semibold">PayPal</h4><p class="text-sm text-gray-600">Send $2.99 to: <strong>elishalukalia210@gmail.com</strong></p><p class="text-sm text-gray-600">After payment, enter the transaction ID below:</p><input type="text" id="paypal-id" placeholder="PayPal Transaction ID" class="w-full p-2 mt-2 border rounded" /></div><button onclick="verifyPayment()" class="bg-indigo-500 text-white px-4 py-2 rounded-full hover:bg-indigo-600">Verify & Download</button><button onclick="hidePopup()" class="mt-4 bg-gray-300 px-4 py-2 rounded-full">Cancel</button></div>
+
+  <script>
+    let qrCode = null;
+  let selectedFormat = '';
+  let currentUseCaseData = '';
+
+  function updateClock() {
+    const clock = document.getElementById('clock');
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    clock.textContent = `${hours}:${minutes}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+function handleFileUpload() {
+  console.log('handleFileUpload called');
+  const fileInput = document.getElementById('qr-file-upload');
+  const qrInput = document.getElementById('qr-input');
+  const file = fileInput.files[0];
+  if (file) {
+    console.log('File selected:', file.name, file.type);
+    const fileType = file.type;
+    const fileName = file.name;
+    if (fileType.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        console.log('Image loaded');
+        qrInput.value = e.target.result; // Base64 data for QR
+        showUploadPreview('Image Preview', 'image', e.target.result, fileName);
+        generateQR(); // Auto-generate QR code
+      };
+      reader.readAsDataURL(file);
+    } else if (fileType === 'application/pdf') {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        console.log('PDF loaded');
+        try {
+          const typedArray = new Uint8Array(e.target.result);
+          const pdf = await pdfjsLib.getDocument(typedArray).promise;
+          qrInput.value = `PDF Preview: ${fileName}`; // Placeholder for QR
+          showUploadPreview('PDF Preview', 'pdf', pdf, fileName);
+          generateQR(); // Auto-generate QR code
+        } catch (error) {
+          console.error('PDF processing error:', error);
+          qrInput.value = `Uploaded PDF: ${fileName}`;
+          showUploadPreview('PDF Preview', 'pdf', 'Error rendering PDF', fileName);
+          generateQR(); // Auto-generate QR code even on error
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (fileType === 'text/plain') {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        console.log('Text loaded');
+        qrInput.value = e.target.result; // Full text for QR
+        showUploadPreview('Text Preview', 'text', e.target.result, fileName);
+        generateQR(); // Auto-generate QR code
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Unsupported file type. Please upload an image, PDF, or text file.');
+    }
+  } else {
+    console.log('No file selected');
+    alert('Please select a file to upload.');
+  }
+}
+
+async function showUploadPreview(title, type, content, fileName) {
+  console.log('Showing preview for:', type);
+  const preview = document.getElementById('use-case-preview');
+  const contentDiv = document.getElementById('preview-content');
+  let html = `<h3>${title}</h3><p>Uploaded file: ${fileName}</p>`;
+  
+  if (type === 'image') {
+    html += `<img src="${content}" alt="Uploaded Image" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px;" />`;
+  } else if (type === 'text') {
+    html += `<textarea readonly class="w-full p-2 border rounded-lg" rows="10" style="max-height: 400px; overflow-y: auto; resize: vertical;">${content}</textarea>`;
+  } else if (type === 'pdf' && typeof content !== 'string') {
+    // Render PDF pages
+    html += `<div id="pdf-preview" style="max-height: 400px; overflow-y: auto; margin-top: 10px;">`;
+    for (let i = 1; i <= content.numPages; i++) {
+      const page = await content.getPage(i);
+      const viewport = page.getViewport({ scale: 1.0 }); // Adjust scale as needed
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.cssText = 'max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 10px;';
+      const context = canvas.getContext('2d');
+      await page.render({ canvasContext: context, viewport: viewport }).promise;
+      html += canvas.outerHTML; // Add rendered canvas to HTML
+    }
+    html += `</div>`;
+  } else if (type === 'pdf') {
+    // Fallback for error case
+    html += `<p class="text-gray-600">${content}</p>`;
+  }
+  
+  html += `<div class="buttons">
+    <button onclick="generateQR()">Generate QR Code</button>
+    <button onclick="hideUseCasePreview()">Close</button>
+  </div>`;
+  
+  contentDiv.innerHTML = html;
+  preview.classList.add('active');
+}
+function showScanOptions() {
+  document.getElementById('scan-popup').classList.add('active');
+  document.getElementById('overlay').classList.add('active');
+}
+
+function hideScanPopup() {
+  document.getElementById('scan-popup').classList.remove('active');
+  document.getElementById('webcam-popup').classList.remove('active');
+  document.getElementById('overlay').classList.remove('active');
+  stopWebcamScan(); // Ensure webcam stops if open
+}
+
+function scanQRFromImage() {
+  const fileInput = document.getElementById('qr-scan-upload');
+  const file = fileInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          console.log('QR code decoded from image:', code.data);
+          displayQRResult(code.data, true); // Pass success flag
+        } else {
+          console.error('No QR code found in image');
+          alert('No QR code detected in the uploaded image.');
+        }
+      };
+      img.onerror = function() {
+        console.error('Image loading failed');
+        alert('Failed to load the image. Please try again.');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    hideScanPopup();
+  } else {
+    alert('Please select an image to scan.');
+  }
+}
+
+let videoStream = null;
+function startWebcamScan() {
+  const video = document.getElementById('webcam-video');
+  const canvas = document.getElementById('webcam-canvas');
+  const ctx = canvas.getContext('2d');
+  let scanLineY = 0;
+  let scanDirection = 1; // 1 for down, -1 for up
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      videoStream = stream;
+      video.srcObject = stream;
+      document.getElementById('webcam-popup').classList.add('active');
+      document.getElementById('scan-popup').classList.remove('active');
+      document.getElementById('overlay').classList.add('active');
+      
+      function scanFrame() {
+        if (!videoStream) return; // Stop if stream is closed
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Draw scanning rays (red line moving up and down)
+        ctx.beginPath();
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.moveTo(0, scanLineY);
+        ctx.lineTo(canvas.width, scanLineY);
+        ctx.stroke();
+
+        // Animate the scan line
+        scanLineY += scanDirection * 5; // Move 5px per frame
+        if (scanLineY >= canvas.height) scanDirection = -1; // Reverse at bottom
+        if (scanLineY <= 0) scanDirection = 1; // Reverse at top
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          console.log('QR code decoded from webcam:', code.data);
+          displayQRResult(code.data, true); // Pass success flag
+          stopWebcamScan();
+        } else {
+          requestAnimationFrame(scanFrame); // Continue scanning
+        }
+      }
+      requestAnimationFrame(scanFrame);
+    })
+    .catch(err => {
+      console.error('Webcam access error:', err);
+      alert('Failed to access webcam. Please allow camera permissions.');
+    });
+}
+
+function stopWebcamScan() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+    document.getElementById('webcam-popup').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+  }
+}
+
+function displayQRResult(content, isSuccess = false) {
+  const preview = document.getElementById('use-case-preview');
+  const contentDiv = document.getElementById('preview-content');
+  let html = `<h3>QR Code Result</h3>`;
+  
+  if (isSuccess) {
+    html += `<p class="text-green-600 font-semibold">Scanned Successfully!</p>`;
+  }
+  
+  if (content.startsWith('data:image/')) {
+    html += `<p>Decoded Image:</p><img src="${content}" alt="Decoded Image" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px;" />`;
+  } else if (content.startsWith('BEGIN:VCARD')) {
+    const vCardLines = content.split('\n');
+    html += `<p>Decoded vCard:</p><ul class="text-left">`;
+    vCardLines.forEach(line => {
+      if (line.includes(':')) {
+        const [key, value] = line.split(':');
+        html += `<li><strong>${key}:</strong> ${value}</li>`;
+      }
+    });
+    html += `</ul>`;
+  } else if (content.match(/^https?:\/\//)) {
+    html += `<p>Decoded URL:</p><a href="${content}" target="_blank" class="text-indigo-600 hover:underline">${content}</a>`;
+  } else {
+    html += `<p>Decoded Text:</p><textarea readonly class="w-full p-2 border rounded-lg" rows="5" style="max-height: 400px; overflow-y: auto; resize: vertical;">${content}</textarea>`;
+  }
+  
+  html += `<div class="buttons"><button onclick="hideUseCasePreview()">Close</button></div>`;
+  contentDiv.innerHTML = html;
+  preview.classList.add('active');
+}
+
+function generateQR() {
+      const input = document.getElementById('qr-input').value;
+      const qrPreview = document.getElementById('qr-preview');
+      const customizationPanel = document.getElementById('customization-panel');
+      const downloadButtons = document.getElementById('download-buttons');
+      if (input) {
+        qrPreview.innerHTML = '';
+        const size = document.getElementById('qr-size').value || 200;
+        const qrColor = document.getElementById('qr-color').value;
+        const bgColor = document.getElementById('qr-bg-color').value;
+        const shape = document.getElementById('qr-shape').value;
+        const errorCorrection = document.getElementById('qr-error-correction').value;
+        const quietZone = document.getElementById('qr-quiet-zone').value;
+        qrCode = new QRCode(qrPreview, {
+          text: input,
+          width: parseInt(size),
+          height: parseInt(size),
+          colorDark: qrColor,
+          colorLight: bgColor,
+          correctLevel: QRCode.CorrectLevel[errorCorrection],
+          quietZone: parseInt(quietZone),
+        });
+        applyQRShape(shape);
+        qrPreview.classList.add('qr-container', 'animate__animated', 'animate__fadeInUp');
+        customizationPanel.classList.remove('hidden');
+        downloadButtons.classList.remove('hidden');
+      } else {
+        alert('Please enter a value or upload a file!');
+      }
+    }
+
+    function updateQR() {
+      const input = document.getElementById('qr-input').value;
+      const qrPreview = document.getElementById('qr-preview');
+      if (qrCode && input) {
+        qrPreview.innerHTML = '';
+        const size = document.getElementById('qr-size').value || 200;
+        const qrColor = document.getElementById('qr-color').value;
+        const bgColor = document.getElementById('qr-bg-color').value;
+        const shape = document.getElementById('qr-shape').value;
+        const errorCorrection = document.getElementById('qr-error-correction').value;
+        const quietZone = document.getElementById('qr-quiet-zone').value;
+        qrCode = new QRCode(qrPreview, {
+          text: input,
+          width: parseInt(size),
+          height: parseInt(size),
+          colorDark: qrColor,
+          colorLight: bgColor,
+          correctLevel: QRCode.CorrectLevel[errorCorrection],
+          quietZone: parseInt(quietZone),
+        });
+        applyQRShape(shape);
+      }
+    }
+
+    function applyQRShape(shape) {
+      const canvas = document.querySelector('#qr-preview canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      if (shape === 'rounded') {
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            if (data[i + 3] > 0) {
+              const isEdge = checkEdge(x, y, canvas, data);
+              if (isEdge) {
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = data[i] === 0 ? document.getElementById('qr-color').value : document.getElementById('qr-bg-color').value;
+                ctx.fill();
+              }
+            }
+          }
+        }
+      } else if (shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 5, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'diamond') {
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 5);
+        ctx.lineTo(canvas.width - 5, canvas.height / 2);
+        ctx.lineTo(canvas.width / 2, canvas.height - 5);
+        ctx.lineTo(5, canvas.height / 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'hexagon') {
+        const r = canvas.width / 2 - 5;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          ctx.lineTo(canvas.width / 2 + r * Math.cos((i * 60) * Math.PI / 180), canvas.height / 2 + r * Math.sin((i * 60) * Math.PI / 180));
+        }
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'star') {
+        const spikes = 5;
+        const outerRadius = canvas.width / 2 - 5;
+        const innerRadius = outerRadius / 2;
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+          const radius = i % 2 === 0 ? outerRadius : innerRadius;
+          ctx.lineTo(canvas.width / 2 + radius * Math.cos((i * 360 / (spikes * 2)) * Math.PI / 180), canvas.height / 2 + radius * Math.sin((i * 360 / (spikes * 2)) * Math.PI / 180));
+        }
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'heart') {
+        ctx.beginPath();
+        const w = canvas.width - 10;
+        const h = canvas.height - 10;
+        ctx.moveTo(w / 2, h / 4);
+        ctx.bezierCurveTo(w / 2 + 40, h / 4 - 40, w - 20, h / 2, w / 2, h - 20);
+        ctx.bezierCurveTo(20, h / 2, w / 2 - 40, h / 4 - 40, w / 2, h / 4);
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 5);
+        ctx.lineTo(canvas.width - 5, canvas.height - 5);
+        ctx.lineTo(5, canvas.height - 5);
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'octagon') {
+        const r = canvas.width / 2 - 5;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          ctx.lineTo(canvas.width / 2 + r * Math.cos((i * 45) * Math.PI / 180), canvas.height / 2 + r * Math.sin((i * 45) * Math.PI / 180));
+        }
+        ctx.closePath();
+        ctx.clip();
+        ctx.putImageData(imageData, 0, 0);
+      } else if (shape === 'pixelated') {
+        ctx.imageSmoothingEnabled = false;
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width / 2;
+        tempCanvas.height = canvas.height / 2;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function checkEdge(x, y, canvas, data) {
+      const i = (y * canvas.width + x) * 4;
+      const neighbors = [((y - 1) * canvas.width + x) * 4, ((y + 1) * canvas.width + x) * 4, (y * canvas.width + (x - 1)) * 4, (y * canvas.width + (x + 1)) * 4];
+      return neighbors.some(n => n < 0 || n >= data.length || data[n + 3] === 0);
+    }
+
+    function fetchGoogleQR() {
+      const input = document.getElementById('qr-input').value;
+      const qrPreview = document.getElementById('qr-preview');
+      if (input) {
+        qrPreview.innerHTML = '';
+        const size = document.getElementById('qr-size')?.value || 200;
+        const url = `https://chart.googleapis.com/chart?cht=qr&chl=${encodeURIComponent(input)}&chs=${size}x${size}`;
+        const img = document.createElement('img');
+        img.src = url;
+        img.classList.add('animate__animated', 'animate__fadeInUp');
+        qrPreview.appendChild(img);
+        document.getElementById('customization-panel').classList.add('hidden');
+        document.getElementById('download-buttons').classList.remove('hidden');
+      } else {
+        alert('Please enter a value!');
+      }
+    }
+
+    function fetchQRCodeMonkey() {
+      const input = document.getElementById('qr-input').value;
+      const qrPreview = document.getElementById('qr-preview');
+      if (input) {
+        qrPreview.innerHTML = '';
+        const size = document.getElementById('qr-size')?.value || 200;
+        const qrColor = document.getElementById('qr-color').value.replace('#', '');
+        const bgColor = document.getElementById('qr-bg-color').value.replace('#', '');
+        const url = `https://api.qrcode-monkey.com/qr/custom?data=${encodeURIComponent(input)}&size=${size}&color=${qrColor}&bgColor=${bgColor}&file=png`;
+        fetch(url).then(response => response.blob()).then(blob => {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.classList.add('animate__animated', 'animate__fadeInUp');
+          qrPreview.appendChild(img);
+          document.getElementById('download-buttons').classList.remove('hidden');
+        }).catch(() => {
+          alert('Error fetching QR code from QR Code Monkey. Try using a local server or proxy.');
+          qrPreview.innerHTML = '<p class="text-red-500">API fetch failed due to CORS. Use a proxy or server.</p>';
+        });
+      } else {
+        alert('Please enter a value!');
+      }
+    }
+
+    function showPaymentPopup(format) {
+      if (!qrCode && !document.querySelector('#qr-preview img')) return;
+      selectedFormat = format;
+      document.getElementById('payment-popup').classList.add('active');
+      document.getElementById('overlay').classList.add('active');
+    }
+
+    function verifyPayment() {
+      const mpesaId = document.getElementById('mpesa-id').value;
+      const paypalId = document.getElementById('paypal-id').value;
+      if (mpesaId || paypalId) {
+        alert('Payment verified (simulation). Downloading your QR code...');
+        downloadQR(selectedFormat);
+        hidePopup();
+      } else {
+        alert('Please enter a valid transaction ID.');
+      }
+    }
+
+    function downloadQR(format) {
+      const preview = document.getElementById('qr-preview');
+      const canvas = preview.querySelector('canvas');
+      const img = preview.querySelector('img');
+      const link = document.createElement('a');
+      link.download = `QRGo.${format}`;
+      if (canvas) {
+        link.href = canvas.toDataURL(`image/${format === 'svg' ? 'png' : format}`);
+      } else if (img) {
+        link.href = img.src;
+      }
+      link.click();
+    }
+
+    function resetForm() {
+      document.getElementById('qr-input').value = '';
+      document.getElementById('qr-preview').innerHTML = '';
+      document.getElementById('customization-panel').classList.add('hidden');
+      document.getElementById('download-buttons').classList.add('hidden');
+      qrCode = null;
+    }
+
+    function showPopup(id) {
+      document.getElementById(`popup-${id}`).classList.add('active');
+      document.getElementById('overlay').classList.add('active');
+    }
+
+    function hidePopup() {
+      document.querySelectorAll('.popup').forEach(popup => popup.classList.remove('active'));
+      document.getElementById('overlay').classList.remove('active');
+    }
+
+    function toggleDropdown(id) {
+      const dropdown = document.getElementById(`${id}-dropdown`).parentElement;
+      dropdown.classList.toggle('active');
+      document.querySelectorAll('.dropdown').forEach(d => { if (d !== dropdown) d.classList.remove('active'); });
+    }
+
+    function toggleUseCases() {
+      const useCases = document.querySelector('.use-cases');
+      useCases.classList.toggle('active');
+      if (useCases.classList.contains('active')) {
+        setTimeout(() => {
+          if (!document.querySelector('.use-cases-dropdown:hover') && !document.querySelector('.use-cases:hover')) {
+            useCases.classList.remove('active');
+          }
+        }, 5000);
+      }
+    }
+
+    function showUseCasePreview(name, type, example) {
+      const preview = document.getElementById('use-case-preview');
+      const content = document.getElementById('preview-content');
+      let html = `<h3>${name}</h3><p>Use this QR code to quickly share ${name.toLowerCase()}. Customize the details below and generate your QR code instantly!</p>`;
+      if (type === 'URL') {
+        html += `<label>URL</label><input type="text" id="use-case-input" value="${example}" placeholder="e.g., ${example}" />`;
+      } else if (type === 'vCard') {
+        html += `<label>First Name</label><input type="text" id="vcard-first" value="John" /><label>Last Name</label><input type="text" id="vcard-last" value="Doe" /><label>Organization</label><input type="text" id="vcard-org" value="Example Inc." /><label>Phone</label><input type="text" id="vcard-tel" value="+1234567890" /><label>Email</label><input type="text" id="vcard-email" value="john@example.com" />`;
+      } else if (type === 'Text') {
+        html += `<label>Text</label><input type="text" id="use-case-input" value="${example}" placeholder="e.g., ${example}" />`;
+      } else if (type === 'Geo') {
+        html += `<label>Latitude</label><input type="text" id="geo-lat" value="37.7749" /><label>Longitude</label><input type="text" id="geo-lon" value="-122.4194" />`;
+      } else if (type === 'Tel') {
+        html += `<label>Phone Number</label><input type="text" id="use-case-input" value="${example}" placeholder="e.g., ${example}" />`;
+      } else if (type === 'WiFi') {
+        html += `<label>SSID</label><input type="text" id="wifi-ssid" value="MyNetwork" /><label>Password</label><input type="text" id="wifi-pass" value="password123" /><label>Encryption</label><select id="wifi-type"><option value="WPA2">WPA2</option><option value="WPA">WPA</option><option value="WEP">WEP</option><option value="nopass">None</option></select>`;
+      }
+      html += `<div class="buttons"><button onclick="confirmUseCase()">Confirm & Generate</button><button onclick="hideUseCasePreview()">Cancel</button></div>`;
+      content.innerHTML = html;
+      preview.classList.add('active');
+      currentUseCaseData = { name, type };
+    }
+
+    function hideUseCasePreview() {
+      document.getElementById('use-case-preview').classList.remove('active');
+    }
+
+    function confirmUseCase() {
+      const type = currentUseCaseData.type;
+      let value = '';
+      if (type === 'URL' || type === 'Text' || type === 'Tel') {
+        value = document.getElementById('use-case-input').value;
+      } else if (type === 'vCard') {
+        const first = document.getElementById('vcard-first').value;
+        const last = document.getElementById('vcard-last').value;
+        const org = document.getElementById('vcard-org').value;
+        const tel = document.getElementById('vcard-tel').value;
+        const email = document.getElementById('vcard-email').value;
+        value = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first}\nORG:${org}\nTEL:${tel}\nEMAIL:${email}\nEND:VCARD`;
+      } else if (type === 'Geo') {
+        const lat = document.getElementById('geo-lat').value;
+        const lon = document.getElementById('geo-lon').value;
+        value = `geo:${lat},${lon}`;
+      } else if (type === 'WiFi') {
+        const ssid = document.getElementById('wifi-ssid').value;
+        const pass = document.getElementById('wifi-pass').value;
+        const type = document.getElementById('wifi-type').value;
+        value = `WIFI:S:${ssid};P:${pass};T:${type};;`;
+      }
+      document.getElementById('qr-input').value = value;
+      hideUseCasePreview();
+      scrollToGenerate();
+    }
+
+    function scrollToGenerate() {
+      document.querySelector('button[onclick="generateQR()"]').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown') && !e.target.closest('.use-cases') && !e.target.closest('.use-case-preview')) {
+        document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
+        hideUseCasePreview();
+      }
+    });
+  </script>
+</body>
+</html>
